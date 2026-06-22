@@ -1,0 +1,27 @@
+{
+  "google/gemini-2.5-pro": {
+    "passed": 28,
+    "total": 162,
+    "by_class": {
+      "idor": 26,
+      "missing_auth": 2
+    },
+    "fail_reasons": {
+      "parse_failed": 125,
+      "spec_broken": 6,
+      "exploit_still_works": 3
+    }
+  },
+  "anthropic/claude-sonnet-4.6": {
+    "passed": 4,
+    "total": 10,
+    "by_class": {
+      "idor": 3,
+      "missing_auth": 1
+    },
+    "fail_reasons": {
+      "exploit_still_works": 3,
+      "spec_broken": 3
+    }
+  }
+}

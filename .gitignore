@@ -1,0 +1,12 @@
+.env
+.env.*
+myenv/
+__pycache__/
+*.pyc
+.DS_Store
+
+# Raw per-case factory + eval dumps (intermediate; kept locally, not in git).
+# The aggregated outputs (dataset.jsonl, eval_results.jsonl, eval_summary.json) ARE tracked.
+results/
+eval_runs/
+synthesized_prompts/
