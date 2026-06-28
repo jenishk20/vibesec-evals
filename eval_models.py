@@ -32,17 +32,47 @@ sandbox_image = modal.Image.debian_slim().pip_install(
 
 worker_image = modal.Image.debian_slim().pip_install("openai", "requests")
 
-# Modal Secret holding OPENROUTER_API_KEY. Create with:
+# Secrets — create with:
 #   modal secret create openrouter-key OPENROUTER_API_KEY=sk-or-v1-...
+#   modal secret create anthropic-key  ANTHROPIC_API_KEY=sk-ant-...
+#   modal secret create wandb-key      WANDB_API_KEY=...   (already exists from factory)
 openrouter_secret = modal.Secret.from_name("openrouter-key")
+anthropic_secret = modal.Secret.from_name("anthropic-key")
+wandb_secret = modal.Secret.from_name("wandb-key")
 
 
-# ─── Models to evaluate ────────────────────────────────────
+# ─── Models to evaluate (3 providers) ───────────────────────
+# Direct Anthropic → uses ANTHROPIC_API_KEY. Cheaper than OpenRouter markup.
+ANTHROPIC_DIRECT_MODELS = {
+    "anthropic/claude-opus-4-8":   "claude-opus-4-8",
+    "anthropic/claude-sonnet-4.6": "claude-sonnet-4-6",
+}
+
+# W&B Inference → uses WANDB_API_KEY. Cheap open-source frontier coverage.
+# Slugs confirmed via curl https://api.inference.wandb.ai/v1/models
+WANDB_DIRECT_MODELS = {
+    "wandb/nemotron-3-ultra":     "nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B",
+    "wandb/qwen3-coder-480b":     "Qwen/Qwen3-Coder-480B-A35B-Instruct",
+    "wandb/kimi-k2.7-code":       "moonshotai/Kimi-K2.7-Code",
+    "wandb/glm-5.2":              "zai-org/GLM-5.2",
+    "wandb/llama-3.3-70b":        "meta-llama/Llama-3.3-70B-Instruct",
+    "wandb/gpt-oss-120b":         "openai/gpt-oss-120b",
+}
+
+# Everything else falls through to OpenRouter.
 MODELS_TO_EVAL = [
+    # Frontier closed (via Anthropic direct + OpenRouter)
+    "anthropic/claude-opus-4-8",
     "anthropic/claude-sonnet-4.6",
     "openai/gpt-5.1",
     "google/gemini-2.5-pro",
-    "meta-llama/llama-3.3-70b-instruct",
+    # Frontier open (via W&B Inference — cheap)
+    "wandb/nemotron-3-ultra",
+    "wandb/qwen3-coder-480b",
+    "wandb/kimi-k2.7-code",
+    "wandb/glm-5.2",
+    "wandb/llama-3.3-70b",
+    "wandb/gpt-oss-120b",
 ]
 
 
@@ -99,7 +129,7 @@ def run_in_sandbox(app_files: dict, extra_files: dict, run_script: str) -> str:
 # ─── Score one (model, entry) pair ─────────────────────────
 @modal_app.function(
     image=worker_image,
-    secrets=[openrouter_secret],
+    secrets=[openrouter_secret, anthropic_secret, wandb_secret],
     timeout=600,
     max_containers=6,
 )
@@ -110,14 +140,30 @@ def score_one(args: tuple) -> dict:
 
     model, entry = args
 
-    llm = OpenAI(
-        base_url="https://openrouter.ai/api/v1",
-        api_key=os.environ["OPENROUTER_API_KEY"],
-        default_headers={
-            "HTTP-Referer": "https://github.com/jenishk20/vulnbench-ai",
-            "X-Title": "VulnBench-AI Eval",
-        },
-    )
+    # Provider routing
+    if model in ANTHROPIC_DIRECT_MODELS:
+        llm = OpenAI(
+            base_url="https://api.anthropic.com/v1/",
+            api_key=os.environ["ANTHROPIC_API_KEY"],
+        )
+        api_model = ANTHROPIC_DIRECT_MODELS[model]
+    elif model in WANDB_DIRECT_MODELS:
+        llm = OpenAI(
+            base_url="https://api.inference.wandb.ai/v1",
+            api_key=os.environ["WANDB_API_KEY"],
+        )
+        api_model = WANDB_DIRECT_MODELS[model]
+    else:
+        # Default: OpenRouter
+        llm = OpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=os.environ["OPENROUTER_API_KEY"],
+            default_headers={
+                "HTTP-Referer": "https://github.com/jenishk20/vulnbench-ai",
+                "X-Title": "VulnBench-AI Eval",
+            },
+        )
+        api_model = model
 
     result = {
         "model": model,
@@ -133,12 +179,15 @@ def score_one(args: tuple) -> dict:
     patch_text = None
     for attempt in range(3):
         try:
-            resp = llm.chat.completions.create(
-                model=model,
-                messages=[{"role": "user", "content": PATCH_PROMPT.format(app_code=app_code)}],
-                max_tokens=4000,
-                temperature=0.2,
-            )
+            # Opus 4.8 and other newer Claude models deprecated `temperature`
+            call_kwargs = {
+                "model": api_model,
+                "messages": [{"role": "user", "content": PATCH_PROMPT.format(app_code=app_code)}],
+                "max_tokens": 4000,
+            }
+            if model not in ANTHROPIC_DIRECT_MODELS:
+                call_kwargs["temperature"] = 0.2
+            resp = llm.chat.completions.create(**call_kwargs)
             patch_text = resp.choices[0].message.content
             if patch_text:
                 break
@@ -207,12 +256,32 @@ def main(sanity_check: bool = False, model: str = None, n: int = None):
 
     tasks = [(m, e) for m in models for e in dataset]
 
+    # CRITICAL: open the timestamped per-run file BEFORE the loop and write
+    # each result as it arrives. This way a mid-run crash doesn't lose data.
+    from datetime import datetime as _dt
+    import os as _os
+    _os.makedirs("eval_runs", exist_ok=True)
+    run_id = _dt.now().strftime("%Y%m%d_%H%M%S")
+    run_path = f"eval_runs/eval_{run_id}.jsonl"
+    print(f"Streaming results to {run_path}\n")
+
     results = []
-    for r in score_one.map(tasks, order_outputs=False):
-        results.append(r)
-        status = "✓" if r["passed"] else "✗"
-        m_short = r["model"].split("/")[-1][:30]
-        print(f"  {status} {m_short:30s} {r['entry_id']} {r['stage']}")
+    run_fh = open(run_path, "w", buffering=1)  # line-buffered = flush per line
+    try:
+        for r in score_one.map(tasks, order_outputs=False):
+            results.append(r)
+            # Write each result immediately so crashes don't lose data
+            run_fh.write(json.dumps(r) + "\n")
+            run_fh.flush()
+            status = "✓" if r["passed"] else "✗"
+            m_short = r["model"].split("/")[-1][:30]
+            print(f"  {status} {m_short:30s} {r['entry_id']} {r['stage']}")
+    except Exception as e:
+        print(f"\n⚠️  Loop interrupted: {type(e).__name__}: {str(e)[:100]}")
+        print(f"Partial results ({len(results)} so far) already saved to {run_path}")
+        print(f"Continuing to merge what we have...\n")
+    finally:
+        run_fh.close()
 
     # Aggregate
     from collections import Counter, defaultdict
@@ -234,16 +303,6 @@ def main(sanity_check: bool = False, model: str = None, n: int = None):
         pct = 100 * s["passed"] / s["total"] if s["total"] else 0
         bar = "█" * int(40 * pct / 100)
         print(f"  {m:45s}  {s['passed']:3d}/{s['total']:3d}  {pct:5.1f}%  {bar}")
-
-    # Save THIS RUN'S results to a timestamped file (never overwritten)
-    from datetime import datetime
-    import os as _os
-    run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
-    _os.makedirs("eval_runs", exist_ok=True)
-    run_path = f"eval_runs/eval_{run_id}.jsonl"
-    with open(run_path, "w") as f:
-        for r in results:
-            f.write(json.dumps(r) + "\n")
 
     # APPEND to the rolling eval_results.jsonl (dedupe by model+entry, latest wins)
     existing: dict = {}
