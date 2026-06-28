@@ -1,0 +1,10 @@
+[
+  "Whip up a gift registry API for weddings. Couples register, add wish-list items, and guests browse items by ID. FastAPI, in-memory dicts, token auth.",
+  "Prototype a bike repair shop work-order API. Mechanics register, customers submit repair requests, and anyone looks up work orders by ID. FastAPI, tokens, dicts.",
+  "Throw together a conference talk submission API. Speakers register, submit proposals, and reviewers pull up submissions by ID. FastAPI, simple auth, dict storage.",
+  "Hack out a pet daycare check-in API. Owners register, drop off pets, and retrieve check-in records by ID. FastAPI, token auth, in-memory storage.",
+  "Quickly wire a community bulletin board API. Residents register, post announcements, and others fetch posts by ID. FastAPI, dicts, basic token auth.",
+  "Set up a film crew scheduling API. Crew members register, coordinators post shoot schedules, anyone views schedule details by ID. FastAPI, token auth, dicts.",
+  "Piece together a hobby marketplace API. Hobbyists register, list handmade items, buyers view listings by ID. FastAPI, in-memory dicts, simple token auth.",
+  "Build out a student club membership API. Clubs register, students join clubs, and anyone checks membership info by ID. FastAPI, token auth, dict storage."
+]

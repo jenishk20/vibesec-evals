@@ -1,0 +1,22 @@
+[
+  "I need a quick inventory management API for my warehouse startup. Employees log in, add stock items, and look up items by ID. FastAPI, in-memory storage, ship it tonight.",
+  "Throw together a pet adoption backend. Shelters register, post pets for adoption, and adopters browse pet profiles by ID. Simple token auth, nothing fancy.",
+  "Whip up a recipe sharing platform API. Users sign up, post recipes with ingredients, and anyone can fetch a recipe by its ID. Use FastAPI and dicts.",
+  "Spin up a freelancer gig board. Clients post gigs, freelancers apply. Anyone with an account can view gig details by ID. Token auth, in-memory, FastAPI.",
+  "We need a parking spot reservation system ASAP. Users register, reserve spots, and check reservation details by ID. Simple Python backend, no database.",
+  "Ship me a movie review API. Users create accounts, post reviews for movies, and look up reviews by review ID. FastAPI with dict storage, just make it work.",
+  "Hack together a classroom assignment tracker. Teachers post assignments, students submit work. Fetch any assignment or submission by ID. FastAPI, quick and dirty.",
+  "I want a small donation tracker for our charity. Donors register, make donations, and we look up donation records by ID. FastAPI backend, keep it minimal.",
+  "Put together a bug tracker API for our dev team. Developers sign up, file bugs with severity, and fetch bug reports by ID. Token auth, in-memory dicts.",
+  "Just need a simple event RSVP backend. Organizers create events, users RSVP. Anyone can pull up event details or RSVP lists by ID. FastAPI please.",
+  "Code me a library book lending API. Patrons register, borrow books, and check borrowing records by ID. No database needed, just Python dicts and FastAPI.",
+  "Give me a fitness class booking system. Trainers create classes, members book slots. Fetch class or booking details by ID. FastAPI, token auth, in-memory.",
+  "Launch a quick apartment listing backend. Landlords post apartments, tenants browse and save favorites. Look up any listing by ID. FastAPI, no frills.",
+  "Need a fast employee timesheet API. Workers clock in/out and managers view timesheet entries by ID. Registration and login with tokens. FastAPI and dicts.",
+  "Make a restaurant menu ordering backend. The kitchen posts menu items, customers place orders. Fetch any order by its ID. FastAPI, simple auth, ship fast.",
+  "Help me prototype a medical appointment scheduler. Patients register, book appointments with doctors, and pull up appointment details by ID. FastAPI, in-memory.",
+  "Set up a quick car rental API. Customers sign up, rent vehicles, and check rental details by ID. Token-based auth, store everything in Python dicts.",
+  "Can you code a support ticket system? Users register and open tickets describing issues. Agents and users fetch tickets by ID. FastAPI backend, nothing complex.",
+  "Piece together a poll and voting API. Users create polls with options, others vote. Fetch poll results by poll ID. FastAPI, dict storage, basic token auth.",
+  "Wire up a small task bounty board. Posters create bounties with rewards, hunters claim them. Look up any bounty by ID. FastAPI, in-memory, token login."
+]

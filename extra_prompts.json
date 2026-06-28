@@ -1,0 +1,17 @@
+[
+  "Quickly scaffold a pet grooming appointment API. Groomers sign up, clients book sessions, and either party can pull up booking details by ID. FastAPI, dicts, token auth.",
+  "Cobble together a shared expense splitter backend. Friends register, log expenses, and view any expense entry by its ID. FastAPI with in-memory storage.",
+  "Knock out a plant nursery inventory API. Staff register, add plants to stock, and customers look up plant details by ID. FastAPI, simple tokens, dict storage.",
+  "Dash out a coworking space desk booking backend. Members sign up, reserve desks, and check reservation details by ID. Token auth, FastAPI, no database.",
+  "Rig up a volunteer event coordination API. Organizers post events, volunteers sign up and check event info by ID. FastAPI, in-memory dicts, basic auth.",
+  "Assemble a lost-and-found items API. Users register, post found items, and anyone can look up item details by ID. FastAPI, token auth, dict storage.",
+  "Draft a quick homework submission portal API. Students register, upload homework entries, and view submissions by ID. FastAPI, tokens, in-memory dicts.",
+  "Stitch together a tool lending library API. Members register, list tools for loan, and borrowers fetch tool details by ID. FastAPI, simple auth, dicts.",
+  "Crank out a neighborhood carpool matching API. Drivers register, post routes, and riders look up route details by ID. FastAPI with in-memory dicts.",
+  "Sketch out a community garden plot booking API. Gardeners sign up, reserve plots, and view plot details by ID. FastAPI, token auth, dict storage.",
+  "Construct a music band practice room scheduler. Bands register, book rooms, and check booking details by ID. FastAPI backend, no DB, token auth.",
+  "Outline a quick meal prep subscription API. Chefs register, post weekly menus, subscribers fetch menu details by ID. FastAPI, dicts, simple tokens.",
+  "Forge a campus study room reservation backend. Students sign up, book rooms, and check bookings by ID. FastAPI, in-memory, basic token auth.",
+  "Hammer out a garage sale listing API. Sellers register, list items for sale, buyers look up item details by ID. FastAPI, token auth, dict storage.",
+  "Roll out a dog walking service API. Walkers register, clients book walks, and fetch walk details by ID. FastAPI, in-memory dicts, token auth."
+]
