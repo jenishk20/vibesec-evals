@@ -26,7 +26,7 @@ import os
 import sys
 from pathlib import Path
 
-DEFAULT_REPO = os.environ.get("HF_REPO", "jenishk20/vibesec")
+DEFAULT_REPO = os.environ.get("HF_REPO", "muence/vibesec")
 DATASET_FILE = Path("dataset.jsonl")
 CARD_FILE = Path("hf_dataset_card.md")
 

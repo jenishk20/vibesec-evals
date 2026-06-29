@@ -28,6 +28,8 @@ Only candidates that pass all four gates enter `dataset.jsonl`.
 - `exploit`: the working exploit.
 - `patched_files`: a known-good reference patch.
 
+The dataset is also published on Hugging Face: **[muence/vibesec](https://huggingface.co/datasets/muence/vibesec)** — load it with `load_dataset("muence/vibesec")`.
+
 IDOR means **Insecure Direct Object Reference**. In current OWASP API terminology, this is usually described as **Broken Object Level Authorization**: a user can access an object by ID even though they do not own or control it.
 
 The current dataset is intentionally public for inspection. For a serious leaderboard, use:

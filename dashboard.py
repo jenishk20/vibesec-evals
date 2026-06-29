@@ -37,6 +37,7 @@ FEEDBACK_ENABLED = os.environ.get("VIBESEC_ENABLE_FEEDBACK", "").strip().lower()
 REPO_URL = "https://github.com/jenishk20/vibesec-evals"
 FORK_URL = f"{REPO_URL}/fork"
 ISSUES_URL = f"{REPO_URL}/issues/new"
+HF_DATASET_URL = "https://huggingface.co/datasets/muence/vibesec"
 EXCLUDED_MODELS = {"google/gemini-2.5-pro"}
 MODEL_LABELS = {
     "anthropic/claude-opus-4-8": "Claude Opus 4.8",
@@ -403,6 +404,7 @@ if results:
 st.sidebar.divider()
 st.sidebar.link_button("Star on GitHub", REPO_URL, width="stretch")
 st.sidebar.link_button("Fork benchmark", FORK_URL, width="stretch")
+st.sidebar.link_button("Dataset on Hugging Face", HF_DATASET_URL, width="stretch")
 
 
 def render_github_actions() -> None:

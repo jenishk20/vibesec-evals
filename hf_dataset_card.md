@@ -87,7 +87,7 @@ Each row in `dataset.jsonl`:
 ```python
 from datasets import load_dataset
 
-ds = load_dataset("jenishk20/vibesec", split="train")
+ds = load_dataset("muence/vibesec", split="train")
 ex = ds[0]
 print(ex["vuln_class"])
 print(ex["app_files"]["main.py"])
