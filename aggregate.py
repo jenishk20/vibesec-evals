@@ -20,6 +20,9 @@ def classify(exploit_code: str) -> str:
     if re.search(r'(is_admin|"admin"|role.*admin|"role":\s*"admin")', code):
         if 'patch' in code or 'put' in code:
             return "mass_assignment"
+    if any(t in code for t in ["jwt", "base64", "b64decode", "b64encode", "alg", "forge", "forged", "tamper", "tampered"]):
+        if any(t in code for t in ["token", "role", "admin", "user_id", "is_admin"]):
+            return "token_forgery"
     if "../" in code or "/etc/passwd" in code:
         return "path_traversal"
     if "or 1=1" in code or "union select" in code:
@@ -28,6 +31,11 @@ def classify(exploit_code: str) -> str:
         return "missing_auth"
     if any(t in code for t in ["user_a", "user_b", "alice", "bob", "victim", "attacker", "user1", "user2"]):
         return "idor"
+    if any(t in code for t in ["169.254.169.254", "metadata.google.internal", "file://", "gopher://"]):
+        return "ssrf"
+    if any(t in code for t in ["internal_url", "callback_url", "webhook_url", "target_url"]):
+        if any(t in code for t in ["metadata", "localhost", "127.0.0.1", "internal"]):
+            return "ssrf"
     return "other"
 
 

@@ -10,3 +10,21 @@ __pycache__/
 results/
 eval_runs/
 synthesized_prompts/
+community_feedback.jsonl
+
+# Derived SFT/DPO training artifacts (built by prepare_training_data.py).
+# Not part of the public V0 benchmark release.
+training_data/
+prepared_training_data*
+
+# Early-iteration scratch scripts, superseded by the documented pipeline
+# (synthesize_prompts.py / factory_loop.py / aggregate.py / eval_models.py / dashboard.py).
+# Kept locally, excluded from the public V0 repo.
+boot_app.py
+factory_v1.py
+factory_v2.py
+full_loop.py
+hello_sandbox.py
+test_llm.py
+verify_vuln.py
+test-runs/

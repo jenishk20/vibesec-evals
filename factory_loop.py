@@ -99,6 +99,8 @@ You should consider multiple vulnerability classes before writing the exploit. P
 5. Insecure default — guessable token format, no rate limiting, no input validation
 6. Sequential ID enumeration — list /resource/1, /resource/2, /resource/3 and see what's accessible
 7. Broken object-level authorization — modify or delete another user's resource
+8. SSRF — make the server fetch an internal/private URL supplied by the attacker
+9. Token forgery — forge or tamper with weak tokens that include user id, role, or admin flags
 
 The script must:
 - Use `requests` library
@@ -349,21 +351,31 @@ def run_one_cycle(seed_prompt: str) -> dict:
 
 # ─── Local entrypoint ──────────────────────────────────────
 @modal_app.local_entrypoint()
-def main(n: int = 3, attempts: int = 1):
+def main(n: int = 3, attempts: int = 1, prompt_source: str = "all"):
     """Run N seed prompts × `attempts` times in parallel.
 
-    --n        : how many seed prompts to use (capped by available prompts)
-    --attempts : how many times to try each prompt (different random seeds)
+    --n             : how many seed prompts to use (capped by available prompts)
+    --attempts      : how many times to try each prompt (different random seeds)
+    --prompt-source : all, manual, or synthesized
     """
     # Import here (not at module top) so the remote worker container
     # doesn't need prompts.py — it only runs locally.
-    from prompts import SEED_PROMPTS
+    from prompts import MANUAL_PROMPTS, SYNTHESIZED, SEED_PROMPTS
 
-    base_prompts = SEED_PROMPTS[:n]
+    if prompt_source == "manual":
+        available_prompts = MANUAL_PROMPTS
+    elif prompt_source == "synthesized":
+        available_prompts = SYNTHESIZED
+    elif prompt_source == "all":
+        available_prompts = SEED_PROMPTS
+    else:
+        raise ValueError("--prompt-source must be one of: all, manual, synthesized")
+
+    base_prompts = available_prompts[:n]
     # Multiply each prompt by `attempts` — LLM non-determinism gives different outputs
     prompts = base_prompts * attempts
     print(f"Dispatching {len(prompts)} cycles to Modal "
-          f"({len(base_prompts)} seeds × {attempts} attempts)...\n")
+          f"({len(base_prompts)} {prompt_source} seeds × {attempts} attempts)...\n")
 
     verified_count = 0
     rejected_count = 0

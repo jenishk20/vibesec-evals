@@ -10,8 +10,9 @@ For each (model, entry) pair:
 Usage:
   modal run eval_models.py --sanity-check               # 1 model × 5 entries (~$0.10)
   modal run eval_models.py                              # all models × all entries
-  modal run eval_models.py --model "openai/gpt-5.1"     # one model only
+  modal run eval_models.py --model "wandb/glm-5.2"      # one model only
   modal run eval_models.py --n 20                       # limit to first 20 entries
+  modal run eval_models.py --missing-only               # only unevaluated model × entry pairs
 """
 
 import os
@@ -52,26 +53,19 @@ ANTHROPIC_DIRECT_MODELS = {
 # Slugs confirmed via curl https://api.inference.wandb.ai/v1/models
 WANDB_DIRECT_MODELS = {
     "wandb/nemotron-3-ultra":     "nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B",
-    "wandb/qwen3-coder-480b":     "Qwen/Qwen3-Coder-480B-A35B-Instruct",
     "wandb/kimi-k2.7-code":       "moonshotai/Kimi-K2.7-Code",
     "wandb/glm-5.2":              "zai-org/GLM-5.2",
-    "wandb/llama-3.3-70b":        "meta-llama/Llama-3.3-70B-Instruct",
     "wandb/gpt-oss-120b":         "openai/gpt-oss-120b",
 }
 
 # Everything else falls through to OpenRouter.
 MODELS_TO_EVAL = [
-    # Frontier closed (via Anthropic direct + OpenRouter)
+    # Public V0 leaderboard set.
     "anthropic/claude-opus-4-8",
     "anthropic/claude-sonnet-4.6",
-    "openai/gpt-5.1",
-    "google/gemini-2.5-pro",
-    # Frontier open (via W&B Inference — cheap)
     "wandb/nemotron-3-ultra",
-    "wandb/qwen3-coder-480b",
     "wandb/kimi-k2.7-code",
     "wandb/glm-5.2",
-    "wandb/llama-3.3-70b",
     "wandb/gpt-oss-120b",
 ]
 
@@ -159,7 +153,7 @@ def score_one(args: tuple) -> dict:
             base_url="https://openrouter.ai/api/v1",
             api_key=os.environ["OPENROUTER_API_KEY"],
             default_headers={
-                "HTTP-Referer": "https://github.com/jenishk20/vulnbench-ai",
+                "HTTP-Referer": "https://github.com/jenishk20/vibesec-evals",
                 "X-Title": "VulnBench-AI Eval",
             },
         )
@@ -239,7 +233,8 @@ def score_one(args: tuple) -> dict:
 
 # ─── Local entrypoint ──────────────────────────────────────
 @modal_app.local_entrypoint()
-def main(sanity_check: bool = False, model: str = None, n: int = None):
+def main(sanity_check: bool = False, model: str = None, n: int = None,
+         missing_only: bool = False):
     with open("dataset.jsonl") as f:
         dataset = [json.loads(line) for line in f]
 
@@ -255,6 +250,20 @@ def main(sanity_check: bool = False, model: str = None, n: int = None):
               f"{len(models) * len(dataset)} tasks\n")
 
     tasks = [(m, e) for m in models for e in dataset]
+
+    if missing_only and os.path.exists("eval_results.jsonl"):
+        existing_keys = set()
+        with open("eval_results.jsonl") as f:
+            for line in f:
+                r = json.loads(line)
+                existing_keys.add((r["model"], r["entry_id"]))
+        before = len(tasks)
+        tasks = [(m, e) for (m, e) in tasks if (m, e["id"]) not in existing_keys]
+        print(f"MISSING ONLY: {len(tasks)}/{before} model-entry pairs still need eval\n")
+
+    if not tasks:
+        print("No eval tasks to run.")
+        return
 
     # CRITICAL: open the timestamped per-run file BEFORE the loop and write
     # each result as it arrives. This way a mid-run crash doesn't lose data.

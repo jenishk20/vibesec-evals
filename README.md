@@ -1,131 +1,133 @@
 # VibeSec
 
-**Can the AI that writes your startup also secure it?**
+**Execution-verified security evals for AI coding agents.**
 
-VibeSec is a *verified* benchmark for LLM security. An AI vibe-codes a small web app from a casual founder prompt, a second AI writes a working exploit, a third AI patches it — and **every step is executed in a sandbox**, not graded by another LLM. The result is a dataset of vulnerable apps where the vulnerability is *proven real* (an exploit actually triggered it) and the fix is *proven correct* (the exploit stops working and the app still passes its spec).
+VibeSec measures whether a model can patch a real, exploit-proven vulnerability without breaking the app. Each task starts from a casual founder-style prompt, generates a small FastAPI app, proves a vulnerability with a runnable exploit, and verifies the patch in a sandbox.
 
-We then score frontier models on the one task that matters: **given a real, exploit-proven vulnerability, can you patch it without breaking the app?**
+Suggested GitHub repo description:
 
----
+> Execution-verified benchmark for AI coding security: generated apps, working exploits, sandbox-verified patches, and model leaderboards.
 
-## Why this is different
+## What Makes It Different
 
-Most "LLM security" benchmarks are static code snippets graded by a judge model. That measures plausibility, not truth. VibeSec is **execution-verified end to end**:
+Most LLM security benchmarks use static snippets or judge-model grading. VibeSec uses executable gates:
 
-- The vulnerable app **boots and serves traffic** in an isolated [Modal](https://modal.com) sandbox.
-- The exploit is a real Python script that **prints `PWNED` only when it reads/modifies data it shouldn't**.
-- The patch must make that exact exploit **fail** *and* keep the golden-path spec test **passing**.
+1. The generated app boots and passes a golden-path spec test.
+2. A real exploit script prints `PWNED`.
+3. A patch makes that exact exploit fail.
+4. The patched app still passes the original spec.
 
-No LLM-as-judge anywhere in the verification loop. If it's in the dataset, the bug was real and the fix worked.
+Only candidates that pass all four gates enter `dataset.jsonl`.
 
----
+## Current Dataset
 
-## The factory pipeline
+`dataset.jsonl` currently contains **172 verified triplets**. A verified triplet is:
 
-```
- synthesize_prompts.py        "founder at 2am" seed prompts, biased per vuln class
-        │
-        ▼
- factory_loop.py  (Modal)     one cycle per prompt, 4 LLM calls + 4 sandbox gates:
-        │
-        ├─ ① generate vulnerable FastAPI app        (DeepSeek-V4-Flash)
-        ├─ ② generate golden-path spec test
-        ├─ ③ GATE 1  spec passes on unpatched app   ── sandbox
-        ├─ ④ generate exploit                        (DeepSeek-V4-Flash)
-        ├─ ⑤ GATE 2  exploit prints PWNED            ── sandbox
-        ├─ ⑥ generate patch                          (Qwen3-Coder-480B)
-        ├─ ⑦ GATE 3  exploit now FAILS on patch      ── sandbox
-        └─ ⑧ GATE 4  spec still passes on patch      ── sandbox
-        │
-        ▼
- aggregate.py                 dedup verified triplets ──► dataset.jsonl
-        │
-        ▼
- eval_models.py  (Modal)      score frontier models on patching each entry
-        │
-        ▼
- dashboard.py                 Streamlit leaderboard + dataset explorer
-```
+- `app_files`: the vulnerable generated app.
+- `spec_test`: the normal-behavior test.
+- `exploit`: the working exploit.
+- `patched_files`: a known-good reference patch.
 
-Only cycles where **all four gates pass** make it into the dataset. Everything else is saved to `results/<run>/rejected/` with the failure stage, so the pipeline is fully auditable.
+IDOR means **Insecure Direct Object Reference**. In current OWASP API terminology, this is usually described as **Broken Object Level Authorization**: a user can access an object by ID even though they do not own or control it.
 
----
+The current dataset is intentionally public for inspection. For a serious leaderboard, use:
 
-## The dataset
+- **Public inspect set:** examples people can browse and trust.
+- **Private held-out set:** unseen tasks used for official model ranking.
 
-`dataset.jsonl` — **162 verified triplets** (and growing). Each line:
+## Dashboard
 
-| field | meaning |
-|---|---|
-| `id` | sha256 of the exploit (dedup key) |
-| `seed_prompt` | the casual founder prompt that produced the app |
-| `vuln_class` | auto-labeled: `idor`, `missing_auth`, `mass_assignment`, `privilege_escalation`, `path_traversal`, `sql_injection` |
-| `app_files` | the vulnerable app (`main.py` + `requirements.txt`) |
-| `spec_test` | golden-path test — prints `SPEC_PASS`/`SPEC_FAIL` |
-| `exploit` | working exploit — prints `PWNED`/`safe` |
-| `exploit_output` | captured stdout proving the attack landed |
-| `patched_files` | a reference patch that closes the bug and keeps the spec green |
-
-The vulnerabilities are the classic ones AI coding assistants reintroduce constantly when you tell them to "just ship it": missing ownership checks (IDOR), unauthenticated endpoints, mass assignment, privilege escalation.
-
-> Vulnerability classes are currently heuristically labeled from the exploit code; label refinement is on the roadmap.
-
----
-
-## Quickstart
+Run the benchmark UI:
 
 ```bash
-python -m venv myenv && source myenv/bin/activate
 pip install -r requirements.txt
-
-# 1. Generate seed prompts (needs WANDB_API_KEY)
-python synthesize_prompts.py 30 idor
-
-# 2. Run the factory on Modal (needs `modal setup` + secrets, see below)
-modal run factory_loop.py --n 30 --attempts 2
-
-# 3. Aggregate verified triplets into the dataset
-python aggregate.py
-
-# 4. Score frontier models (needs OPENROUTER_API_KEY)
-modal run eval_models.py --sanity-check      # 1 model × 5 entries
-modal run eval_models.py                      # full leaderboard
-
-# 5. Explore results
 streamlit run dashboard.py
 ```
 
-### Credentials
+The dashboard includes:
 
-Local `.env` (git-ignored):
+- model leaderboard and failure breakdowns;
+- task explorer for prompt, app, spec, exploit, exploit output, patch, and diff;
+- raw model response inspection;
+- upvote, useful, needs-review, comment, share, star, fork, and issue actions;
+- methodology and submission guidance.
 
-```
-WANDB_API_KEY=...        # W&B Inference, for generation models
-OPENROUTER_API_KEY=...   # OpenRouter, for the frontier-model eval
-```
+Community feedback is stored locally in `community_feedback.jsonl`. For a hosted deployment, replace that file with GitHub issues, Supabase, Postgres, or another persistent backend.
 
-Modal secrets (for the sandboxed workers):
+## Generate More Tasks
+
+Example: generate targeted prompts, run the factory, then aggregate.
 
 ```bash
-modal secret create wandb-key WANDB_API_KEY=...
-modal secret create openrouter-key OPENROUTER_API_KEY=...
+python synthesize_prompts.py 20 missing_auth
+modal run factory_loop.py --n 20 --attempts 2 --prompt-source synthesized
+
+python aggregate.py
+streamlit run dashboard.py
 ```
 
----
+To move from 172 toward 200 tasks, prioritize non-IDOR classes:
 
-## Why Modal
+| class | target new verified tasks |
+|---|---:|
+| `missing_auth` | 6 |
+| `mass_assignment` | 6 |
+| `privilege_escalation` | 5 |
+| `path_traversal` | 5 |
+| `sql_injection` | 4 |
+| `ssrf` | 2 |
+| `token_forgery` | 2 |
 
-Running AI-generated code and AI-written exploits on your own machine is reckless. Modal gives each cycle a fresh, isolated, network-contained sandbox that's torn down after one run — and `.map()` fans hundreds of cycles out in parallel for a few cents each.
+The factory rejects many candidates. Generate more candidates than you need, then stop once the aggregate dataset is balanced enough for launch.
 
----
+## Evaluate Models
 
-## Roadmap
+Run a small sanity check:
 
-- [ ] Harden the eval harness (robust multi-file extraction so format quirks aren't scored as security failures)
-- [ ] Refine vulnerability-class labeling beyond heuristics
-- [ ] Broaden beyond FastAPI (Express, Next.js route handlers, Flask)
-- [ ] Publish the dataset to Hugging Face + a hosted leaderboard that auto-reruns when new models ship
-- [ ] Expand vuln classes (SSRF, auth-token forgery, race conditions)
+```bash
+modal run eval_models.py --sanity-check
+```
+
+Run the configured model set:
+
+```bash
+modal run eval_models.py
+```
+
+The V0 public leaderboard uses six models:
+
+- Claude Opus 4.8
+- Claude Sonnet 4.6
+- Nemotron 3 Ultra
+- Kimi K2.7 Code
+- GLM 5.2
+- GPT-OSS 120B
+
+To score only tasks missing from the saved leaderboard:
+
+```bash
+modal run eval_models.py --missing-only
+```
+
+Gemini 2.5 Pro is excluded from the public dashboard and future default evals because the saved run mostly measured output-format parsing rather than security patching ability.
+
+## Repository Hygiene
+
+Recommended public repo contents:
+
+- source code for the factory, aggregation, eval harness, and dashboard;
+- `dataset.jsonl` public inspect set;
+- `eval_results.jsonl` and `eval_summary.json` for published leaderboard runs;
+- a small number of representative `results/.../verified/*.json` examples if useful;
+- no secrets, `.env`, virtualenvs, caches, or large internal scratch runs.
+
+Avoid publishing every rejected/test run unless you are intentionally releasing an audit archive. Rejected runs are useful internally, but they make the repo noisy for readers.
+
+## Hosting
+
+For V0, Streamlit Community Cloud is the fastest path if the repo can be public and the app only reads local data files. Other good options are Hugging Face Spaces, Modal, Render, or Fly.io.
+
+Do not add public arbitrary exploit execution until you have authentication, queueing, spend limits, sandbox controls, request logs, and moderation.
 
 ## License
 
